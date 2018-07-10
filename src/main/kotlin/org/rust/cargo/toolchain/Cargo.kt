@@ -25,6 +25,7 @@ import com.intellij.util.text.SemVer
 import org.jetbrains.annotations.TestOnly
 import org.rust.cargo.CargoConstants.RUST_BACTRACE_ENV_VAR
 import org.rust.cargo.project.model.cargoProjects
+import org.rust.cargo.project.settings.RustProjectSettingsService.FeaturesSetting
 import org.rust.cargo.project.settings.rustSettings
 import org.rust.cargo.project.settings.toolchain
 import org.rust.cargo.project.workspace.CargoWorkspaceData
@@ -113,7 +114,32 @@ class Cargo(private val cargoExecutable: Path) {
         projectDirectory: Path,
         listener: ProcessListener?
     ): CargoMetadata.Project {
-        val additionalArgs = mutableListOf("--verbose", "--format-version", "1", "--all-features")
+        val additionalArgs = mutableListOf("--verbose", "--format-version", "1")
+        if (owner.rustSettings.useOffline) {
+            additionalArgs += "-Zoffline"
+        }
+
+        val featuresAdditional = owner.rustSettings.cargoFeaturesAdditional
+        when (owner.rustSettings.cargoFeatures) {
+            FeaturesSetting.All -> {
+                additionalArgs += "--all-features"
+                // Passing --features is not necessary in this case
+                // cargo will just ignore them anyway
+            }
+            FeaturesSetting.Default -> {
+                if (featuresAdditional.isNotEmpty()) {
+                    additionalArgs += "--features"
+                    additionalArgs += featuresAdditional.joinToString(separator = " ")
+                }
+            }
+            FeaturesSetting.NoDefault -> {
+                additionalArgs += "--no-default-features"
+                if (featuresAdditional.isNotEmpty()) {
+                    additionalArgs += "--features"
+                    additionalArgs += featuresAdditional.joinToString(separator = " ")
+                }
+            }
+        }
         val json = CargoCommandLine("metadata", projectDirectory, additionalArgs)
             .execute(owner, listener = listener)
             .stdout
