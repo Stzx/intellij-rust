@@ -22,4 +22,4 @@ build_script:
   - gradlew.bat -Dkotlin.compiler.execution.strategy="in-process" assemble testClasses --no-daemon
 
 test_script:
-  - gradlew.bat check -PexcludeTests=org/rustPerformanceTests/** --no-daemon
+  - gradlew.bat test -PexcludeTests=org/rustPerformanceTests/**  --tests "org.rustSlowTests.CargoProjectResolveTest.test custom target path" --no-daemon --stacktrace
