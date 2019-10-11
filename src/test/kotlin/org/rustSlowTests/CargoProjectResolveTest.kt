@@ -6,6 +6,7 @@
 package org.rustSlowTests
 
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.fixtures.impl.TempDirTestFixtureImpl
 import org.rust.MinRustcVersion
 import org.rust.cargo.RsWithToolchainTestBase
@@ -441,7 +442,7 @@ class CargoProjectResolveTest : RsWithToolchainTestBase() {
             """)
         }.create(project, libraryDir)
 
-        val libraryPath = library.root.pathAsPath.resolve("cargo").toString()
+        val libraryPath = FileUtil.toSystemIndependentName(library.root.pathAsPath.resolve("cargo").toString())
         val testProject = buildProject {
             toml("Cargo.toml", """
                 [package]
