@@ -204,6 +204,7 @@ private fun RsDocAndAttributeOwner.evaluateCfg(): ThreeValuedLogic {
     // When the application now requests certain features, which are not enabled by default in the library
     // we will evaluate features wrongly here
     val options = containingCargoPackage?.cfgOptions ?: return ThreeValuedLogic.True
+    val features = containingCargoPackage?.features?.associate { it.name to it.state } ?: return ThreeValuedLogic.True
 
-    return CfgEvaluator(options).evaluate(cfgAttributes)
+    return CfgEvaluator(options, features).evaluate(cfgAttributes)
 }

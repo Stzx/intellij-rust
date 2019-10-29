@@ -145,7 +145,6 @@ interface CargoWorkspace {
     )
 
     enum class FeatureState {
-        Unknown,
         Enabled,
         Disabled
     }

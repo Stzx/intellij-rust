@@ -256,26 +256,27 @@ object CargoMetadata {
             ?: error("No `workspace_members` key in the `cargo metadata` output.\n" +
                 "Your version of Cargo is no longer supported, please upgrade Cargo.")
         val variables = TargetVariables.from(buildPlan)
+        val packageIdToNode = project.resolve.nodes.associateBy { it.id }
+
         return CargoWorkspaceData(
-            project.packages.mapNotNull {
+            project.packages.mapNotNull { pkg ->
                 // resolve contains all enabled features for each package
-                val resolveNode = project.resolve.nodes.find { node -> node.id == it.id }
+                val resolveNode = packageIdToNode[pkg.id]
                 if (resolveNode == null) {
-                    LOG.error("Could not find package with `id` '${it.id}' in `resolve` section of the `cargo metadata` output.")
+                    LOG.error("Could not find package with `id` '${pkg.id}' in `resolve` section of the `cargo metadata` output.")
                 }
 
                 // Convert to a Set so contains() is cheaper if we have a lot of features
-                val enabledFeatures = resolveNode?.features?.toSet()
-                val features = it.features.keys.map { feature ->
+                val enabledFeatures = resolveNode?.features?.toSet().orEmpty()
+                val features = pkg.features.keys.map { feature ->
                     val state = when {
-                        enabledFeatures == null -> CargoWorkspace.FeatureState.Unknown
                         enabledFeatures.contains(feature) -> CargoWorkspace.FeatureState.Enabled
                         else -> CargoWorkspace.FeatureState.Disabled
                     }
                     CargoWorkspace.Feature(feature, state)
                 }
 
-                it.clean(fs, it.id in members, variables, features)
+                pkg.clean(fs, pkg.id in members, variables, features)
             },
             project.resolve.nodes.associate { (id, dependencies, deps) ->
                 val dependencySet = if (deps != null) {
