@@ -104,10 +104,14 @@ class Cargo(private val cargoExecutable: Path) {
         listener: ProcessListener? = null
     ): CargoWorkspaceData {
         val rawData = fetchMetadata(owner, projectDirectory, listener)
+        for (pkg in rawData.packages) {
+//            fetchMetadataForPackage(pkg)
+        }
         val buildPlan = fetchBuildPlan(owner, projectDirectory, listener)
         return CargoMetadata.clean(rawData, buildPlan)
     }
 
+    // fetch per each package?
     @Throws(ExecutionException::class)
     private fun fetchMetadata(
         owner: Project,
@@ -119,8 +123,8 @@ class Cargo(private val cargoExecutable: Path) {
             additionalArgs += "-Zoffline"
         }
 
-        val featuresAdditional = owner.rustSettings.cargoFeaturesAdditional
-        when (owner.rustSettings.cargoFeatures) {
+        val featuresAdditional = owner.rustSettings.packagesSettings.cargoFeaturesAdditional
+        when (owner.rustSettings.packagesSettings.cargoFeatures) {
             FeaturesSetting.All -> {
                 additionalArgs += "--all-features"
                 // Passing --features is not necessary in this case

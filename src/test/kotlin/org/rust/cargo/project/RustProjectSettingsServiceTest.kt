@@ -67,8 +67,8 @@ class RustProjectSettingsServiceTest : LightPlatformTestCase() {
         assertEquals(false, service.doctestInjectionEnabled)
         assertEquals(true, service.runRustfmtOnSave)
         assertEquals(true, service.useSkipChildren)
-        assertEquals(RustProjectSettingsService.FeaturesSetting.NoDefault, service.cargoFeatures)
-        assertEquals(listOf("foo", "bar"), service.cargoFeaturesAdditional)
+        assertEquals(RustProjectSettingsService.FeaturesSetting.NoDefault, service.packagesSettings.cargoFeatures)
+        assertEquals(setOf("foo", "bar"), service.packagesSettings.cargoFeaturesAdditional)
     }
 
     fun `test update from version 1`() {
@@ -125,7 +125,7 @@ class RustProjectSettingsServiceTest : LightPlatformTestCase() {
         assertEquals(true, service.doctestInjectionEnabled)
         assertEquals(false, service.runRustfmtOnSave)
         assertEquals(false, service.useSkipChildren)
-        assertEquals(RustProjectSettingsService.FeaturesSetting.Default, service.cargoFeatures)
-        assertEquals(listOf<String>(), service.cargoFeaturesAdditional)
+        assertEquals(RustProjectSettingsService.FeaturesSetting.Default, service.packagesSettings.cargoFeatures)
+        assertEquals(setOf<String>(), service.packagesSettings.cargoFeaturesAdditional)
     }
 }

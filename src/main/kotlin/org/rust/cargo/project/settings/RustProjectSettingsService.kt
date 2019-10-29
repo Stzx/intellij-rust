@@ -28,14 +28,13 @@ interface RustProjectSettingsService {
         var runExternalLinterOnTheFly: Boolean = false,
         var externalLinterArguments: String = "",
         var compileAllTargets: Boolean = true,
-        var cargoFeatures: FeaturesSetting = FeaturesSetting.Default,
-        var cargoFeaturesAdditional: List<String> = mutableListOf(),//TODO: Mutable?
         var useOffline: Boolean = false,
         var macroExpansionEngine: MacroExpansionEngine = MacroExpansionEngine.OLD,
         var showTestToolWindow: Boolean = true,
         var doctestInjectionEnabled: Boolean = true,
         var runRustfmtOnSave: Boolean = false,
-        var useSkipChildren: Boolean = false
+        var useSkipChildren: Boolean = false,
+        var packagesSettings: CargoPackageSettings = CargoPackageSettings()
     ) {
         @get:Transient
         @set:Transient
@@ -45,6 +44,11 @@ interface RustProjectSettingsService {
                 toolchainHomeDirectory = value?.location?.systemIndependentPath
             }
     }
+
+    data class CargoPackageSettings(
+        val cargoFeatures: FeaturesSetting = FeaturesSetting.Default,
+        val cargoFeaturesAdditional: Set<String> = setOf()
+    )
 
     enum class MacroExpansionEngine {
         DISABLED, OLD, NEW
@@ -71,14 +75,13 @@ interface RustProjectSettingsService {
     val runExternalLinterOnTheFly: Boolean
     val externalLinterArguments: String
     val compileAllTargets: Boolean
-    val cargoFeatures: FeaturesSetting
-    val cargoFeaturesAdditional: List<String>
     val useOffline: Boolean
     val macroExpansionEngine: MacroExpansionEngine
     val showTestToolWindow: Boolean
     val doctestInjectionEnabled: Boolean
     val runRustfmtOnSave: Boolean
     val useSkipChildren: Boolean
+    val packagesSettings: CargoPackageSettings
 
     /*
      * Show a dialog for toolchain configuration
