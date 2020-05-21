@@ -130,6 +130,9 @@ class RsBreadcrumbsInfoProviderTest : RsTestBase() {
     """, """
         main()
         if 1 > 2 && 3 > 4 $ellipsis
+    """, """
+        main()
+        if 1 > 2 && 3 > 4 && 1 > 2 && 3 > 4
     """)
 
     fun `test long match expr truncation`() = doTextTest("""
@@ -141,6 +144,9 @@ class RsBreadcrumbsInfoProviderTest : RsTestBase() {
     """, """
         main()
         match 1 > 2 && 3 > 4 $ellipsis
+    """, """
+        main()
+        match 1 > 2 && 3 > 4 && 1 > 2 && 3 > 4
     """)
 
     fun `test long for expr truncation`() = doTextTest("""
@@ -152,6 +158,9 @@ class RsBreadcrumbsInfoProviderTest : RsTestBase() {
     """, """
         main()
         for _ in 0..000000000000$ellipsis
+    """, """
+       main()
+       for _ in 0..000000000000000000002
     """)
 
     fun `test block expr label`() = doTextTest("""
@@ -203,21 +212,42 @@ class RsBreadcrumbsInfoProviderTest : RsTestBase() {
         'one: while false
     """)
 
-    private fun doWholeFileTextTest(@Language("Rust") content: String, info: String) {
+    private fun doWholeFileTextTest(@Language("Rust") content: String, info: String, tooltip: String = info) {
         InlineFile(content)
-        val actual = myFixture.file.descendantsOfType<RsElement>()
+
+        val actualInfo = StringBuilder()
+        val actualTooltip = StringBuilder()
+
+        myFixture.file.descendantsOfType<RsElement>()
             .map { it.text }
             .mapNotNull {
                 InlineFile("/*caret*/$it")
-                myFixture.breadcrumbsAtCaret.firstOrNull()?.text
-            }.joinToString(separator = "\n")
+                myFixture.breadcrumbsAtCaret.firstOrNull()
+            }.forEach {
+                actualInfo.append(it.text).append("\n")
 
-        UsefulTestCase.assertSameLines(info.trimIndent(), actual)
+                if (it.tooltip != null)
+                    actualTooltip.append(it.tooltip).append("\n")
+            }
+
+        UsefulTestCase.assertSameLines(info.trimIndent(), actualInfo.toString().trimIndent())
+        UsefulTestCase.assertSameLines(tooltip.trimIndent(), actualTooltip.toString().trimIndent())
     }
 
-    private fun doTextTest(@Language("Rust") content: String, info: String) {
-        InlineFile(content.trimIndent())
-        val crumbs = myFixture.breadcrumbsAtCaret.joinToString(separator = "\n") { it.text }
-        UsefulTestCase.assertSameLines(info.trimIndent(), crumbs)
+    private fun doTextTest(@Language("Rust") content: String, info: String, tooltip: String = info) {
+        InlineFile(content.trimIndent()).withCaret()
+
+        val actualInfo = StringBuilder()
+        val actualTooltip = StringBuilder()
+
+        for (crumb in myFixture.breadcrumbsAtCaret) {
+            actualInfo.append(crumb.text).append("\n")
+
+            if (crumb.tooltip != null)
+                actualTooltip.append(crumb.tooltip).append("\n")
+        }
+
+        UsefulTestCase.assertSameLines(info.trimIndent(), actualInfo.toString().trimIndent())
+        UsefulTestCase.assertSameLines(tooltip.trimIndent(), actualTooltip.toString().trimIndent())
     }
 }

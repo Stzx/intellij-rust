@@ -20,6 +20,8 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
         fun accepts(e: PsiElement): Boolean
 
         fun elementInfo(e: T): String
+
+        fun elementTooltip(e: T): String
     }
 
     private val handlers = listOf<RsElementHandler<*>>(
@@ -44,19 +46,25 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
                 || e is RsConstant || e is RsTypeAlias
 
         override fun elementInfo(e: RsNamedElement): String = e.name.let { "$it" }
+
+        override fun elementTooltip(e: RsNamedElement): String = e.name.let { "$it" }
     }
 
     private object RsImplHandler : RsElementHandler<RsImplItem> {
         override fun accepts(e: PsiElement): Boolean = e is RsImplItem
 
-        override fun elementInfo(e: RsImplItem): String {
+        override fun elementInfo(e: RsImplItem): String = e.buildText()
+
+        override fun elementTooltip(e: RsImplItem): String = e.buildText()
+
+        private fun RsImplItem.buildText(): String {
             val typeName = run {
-                val typeReference = e.typeReference
+                val typeReference = typeReference
                 (typeReference?.skipParens() as? RsBaseType)?.path?.referenceName
                     ?: typeReference?.text
             } ?: return ""
 
-            val traitName = e.traitRef?.path?.referenceName
+            val traitName = traitRef?.path?.referenceName
             val start = if (traitName != null) "$traitName for" else "impl"
 
             return "$start $typeName"
@@ -67,10 +75,16 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
         override fun accepts(e: PsiElement): Boolean =
             e is RsBlockExpr && (e.parent is RsBlock || e.parent is RsLetDecl)
 
-        override fun elementInfo(e: RsBlockExpr): String {
+        override fun elementInfo(e: RsBlockExpr): String = e.buildText()
+
+        override fun elementTooltip(e: RsBlockExpr): String = e.buildText()
+
+        private fun RsBlockExpr.buildText(): String {
+            val element = this
+
             return buildString {
-                if (e.labelDecl != null) {
-                    append(e.labelDecl?.text).append(' ')
+                if (element.labelDecl != null) {
+                    append(element.labelDecl?.text).append(' ')
                 }
 
                 append("{...}")
@@ -82,27 +96,37 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
         override fun accepts(e: PsiElement): Boolean = e is RsMacro
 
         override fun elementInfo(e: RsMacro): String = e.name.let { "$it!" }
+
+        override fun elementTooltip(e: RsMacro): String = e.name.let { "$it!" }
     }
 
     private object RsFunctionHandler : RsElementHandler<RsFunction> {
         override fun accepts(e: PsiElement): Boolean = e is RsFunction
 
         override fun elementInfo(e: RsFunction): String = e.name.let { "$it()" }
+
+        override fun elementTooltip(e: RsFunction): String = e.name.let { "$it()" }
     }
 
     private object RsIfHandler : RsElementHandler<RsIfExpr> {
         override fun accepts(e: PsiElement): Boolean = e is RsIfExpr
 
-        override fun elementInfo(e: RsIfExpr): String {
+        override fun elementInfo(e: RsIfExpr): String = e.buildText(TextKind.INFO)
+
+        override fun elementTooltip(e: RsIfExpr): String = e.buildText(TextKind.TOOLTIP)
+
+        private fun RsIfExpr.buildText(kind: TextKind): String {
+            val element = this
+
             return buildString {
                 append("if")
 
-                val condition = e.condition
+                val condition = element.condition
                 if (condition != null) {
                     if (condition.expr is RsBlockExpr) {
                         append(" {...}")
                     } else {
-                        append(' ').append(condition.text.truncate(TextKind.INFO))
+                        append(' ').append(condition.text.truncate(kind))
                     }
                 }
             }
@@ -113,14 +137,22 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
         override fun accepts(e: PsiElement): Boolean = e is RsElseBranch
 
         override fun elementInfo(e: RsElseBranch): String = "else"
+
+        override fun elementTooltip(e: RsElseBranch): String = "else"
     }
 
     private object RsLoopHandler : RsElementHandler<RsLoopExpr> {
         override fun accepts(e: PsiElement): Boolean = e is RsLoopExpr
 
-        override fun elementInfo(e: RsLoopExpr): String {
+        override fun elementInfo(e: RsLoopExpr): String = e.buildText()
+
+        override fun elementTooltip(e: RsLoopExpr): String = e.buildText()
+
+        private fun RsLoopExpr.buildText(): String {
+            val element = this
+
             return buildString {
-                appendLabelInfo(e.labelDecl)
+                appendLabelInfo(element.labelDecl)
                 append("loop")
             }
         }
@@ -129,18 +161,23 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
     private object RsForHandler : RsElementHandler<RsForExpr> {
         override fun accepts(e: PsiElement): Boolean = e is RsForExpr
 
-        override fun elementInfo(e: RsForExpr): String {
+        override fun elementInfo(e: RsForExpr): String = e.buildText(TextKind.INFO)
+
+        override fun elementTooltip(e: RsForExpr): String = e.buildText(TextKind.TOOLTIP)
+
+        private fun RsForExpr.buildText(kind: TextKind): String {
+            val element = this
             return buildString {
-                appendLabelInfo(e.labelDecl)
+                appendLabelInfo(element.labelDecl)
                 append("for")
 
-                if (e.block != null) {
-                    val pat = e.pat
+                if (element.block != null) {
+                    val pat = element.pat
                     if (pat != null) {
                         append(' ').append(pat.text)
                     }
 
-                    append(" in ").append(e.expr?.text?.truncate(TextKind.INFO))
+                    append(" in ").append(element.expr?.text?.truncate(kind))
                 } else {
                     append(" {...}")
                 }
@@ -151,17 +188,23 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
     private object RsWhileHandler : RsElementHandler<RsWhileExpr> {
         override fun accepts(e: PsiElement): Boolean = e is RsWhileExpr
 
-        override fun elementInfo(e: RsWhileExpr): String {
+        override fun elementInfo(e: RsWhileExpr): String = e.buildText(TextKind.INFO)
+
+        override fun elementTooltip(e: RsWhileExpr): String = e.buildText(TextKind.TOOLTIP)
+
+        private fun RsWhileExpr.buildText(kind: TextKind): String {
+            val element = this
+
             return buildString {
-                appendLabelInfo(e.labelDecl)
+                appendLabelInfo(element.labelDecl)
                 append("while")
 
-                val condition = e.condition
+                val condition = element.condition
                 if (condition != null) {
                     if (condition.expr is RsBlockExpr) {
                         append(" {...}")
                     } else {
-                        append(' ').append(condition.text.truncate(TextKind.INFO))
+                        append(' ').append(condition.text.truncate(kind))
                     }
                 }
             }
@@ -171,28 +214,34 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
     private object RsMatchHandler : RsElementHandler<RsMatchExpr> {
         override fun accepts(e: PsiElement): Boolean = e is RsMatchExpr
 
-        override fun elementInfo(e: RsMatchExpr): String {
+        override fun elementInfo(e: RsMatchExpr): String = e.buildText(TextKind.INFO)
+
+        override fun elementTooltip(e: RsMatchExpr): String = e.buildText(TextKind.TOOLTIP)
+
+        private fun RsMatchExpr.buildText(kind: TextKind): String {
+            val element = this
+
             return buildString {
                 append("match")
 
-                val expr = e.expr
+                val expr = element.expr
                 if (expr != null) {
-                    if (expr is RsBlockExpr && e.matchBody == null) {
+                    if (expr is RsBlockExpr && element.matchBody == null) {
                         append(" {...}")
                     } else {
-                        append(' ').append(expr.buildText(TextKind.INFO))
+                        append(' ').append(expr.text.truncate(kind))
                     }
                 }
             }
         }
-
-        private fun RsExpr.buildText(kind: TextKind): String = text.truncate(kind)
     }
 
     private object RsMatchArmHandler : RsElementHandler<RsMatchArm> {
         override fun accepts(e: PsiElement): Boolean = e is RsMatchArm
 
         override fun elementInfo(e: RsMatchArm): String = e.buildText(TextKind.INFO)
+
+        override fun elementTooltip(e: RsMatchArm): String = e.buildText(TextKind.TOOLTIP)
 
         private fun RsMatchArm.buildText(kind: TextKind): String = "${orPats.text.truncate(kind)} =>"
     }
@@ -201,6 +250,8 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
         override fun accepts(e: PsiElement): Boolean = e is RsLambdaExpr
 
         override fun elementInfo(e: RsLambdaExpr): String = "${e.valueParameterList.text} {...}"
+
+        override fun elementTooltip(e: RsLambdaExpr): String = "${e.valueParameterList.text} {...}"
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -216,7 +267,7 @@ class RsBreadcrumbsInfoProvider : BreadcrumbsProvider {
 
     override fun getElementInfo(e: PsiElement): String = handler(e)!!.elementInfo(e as RsElement)
 
-    override fun getElementTooltip(e: PsiElement): String? = null
+    override fun getElementTooltip(e: PsiElement): String? = handler(e)!!.elementTooltip(e as RsElement)
 
     companion object {
         private enum class TextKind(val maxTextLength: Int) {
