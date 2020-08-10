@@ -711,7 +711,8 @@ class RsErrorAnnotator : AnnotatorBase(), HighlightRangeExtension {
         val coloncolon = args.node.findChildByType(RsElementTypes.COLONCOLON)?.psi ?: return
         // `::` is redundant only in types
         if (PsiTreeUtil.getParentOfType(args, RsTypeReference::class.java, RsTraitRef::class.java) == null) return
-        val annotation = holder.newWeakWarningAnnotation(coloncolon, "Redundant `::`", RemoveElementFix(coloncolon)) ?: return
+        val annotation = holder.newWeakWarningAnnotation(coloncolon, "Redundant `::`", RemoveElementFix(coloncolon))
+            ?: return
         annotation.highlightType(ProblemHighlightType.LIKE_UNUSED_SYMBOL).create()
     }
 
@@ -767,7 +768,20 @@ class RsErrorAnnotator : AnnotatorBase(), HighlightRangeExtension {
         }
     }
 
+    private fun checkAmbiguousAttr(holder: RsAnnotationHolder, attr: RsAttr) {
+        val name = attr.metaItem.name ?: return
+
+        if (name in STD_ATTRIBUTES) {
+            val fn = attr.findInScope(name, MACROS)
+
+            if (fn != null) {
+                RsDiagnostic.ItemUsageAmbiguous(attr, name, "built-in attribute vs any other name").addToHolder(holder)
+            }
+        }
+    }
+
     private fun checkAttr(holder: RsAnnotationHolder, attr: RsAttr) {
+        checkAmbiguousAttr(holder, attr)
         checkDeriveAttribute(holder, attr)
         checkInlineAttr(holder, attr)
         checkReprAttribute(holder, attr)
