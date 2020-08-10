@@ -1279,6 +1279,28 @@ sealed class RsDiagnostic(
             fixes = listOf(RemoveReprValueFix(element))
         )
     }
+
+    class CannotFindAttribute(element: RsAttr,
+                              private val name: String
+    ) : RsDiagnostic(element) {
+        override fun prepare(): PreparedAnnotation = PreparedAnnotation(
+            ERROR,
+            null,
+            "cannot find attribute `$name` in this scope",
+            fixes = listOf(RemoveAttrFix(element as RsAttr))
+        )
+    }
+
+    class CannotFindDeriveMacro(element: RsMetaItem,
+                                private val name: String
+    ) : RsDiagnostic(element) {
+        override fun prepare(): PreparedAnnotation = PreparedAnnotation(
+            ERROR,
+            null,
+            "cannot find derive macro `$name` in this scope",
+            fixes = listOf(RemoveElementFix(element))
+        )
+    }
 }
 
 enum class RsErrorCode {

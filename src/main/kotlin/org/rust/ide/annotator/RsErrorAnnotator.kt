@@ -650,13 +650,6 @@ class RsErrorAnnotator : AnnotatorBase(), HighlightRangeExtension {
         checkImplBothCopyAndDrop(holder, impl.typeReference?.type ?: return, impl.traitRef ?: return, trait)
     }
 
-    private fun checkImplBothCopyAndDrop(holder: RsAnnotationHolder, attr: RsAttr) {
-        // TODO: support `#[derive(std::marker::Copy)]`
-        val deriveCopy = attr.metaItem.metaItemArgs?.metaItemList?.find { it.name == "Copy" } ?: return
-        val selfType = (attr.parent as? RsStructOrEnumItemElement)?.declaredType ?: return
-        checkImplBothCopyAndDrop(holder, selfType, deriveCopy, attr.knownItems.Copy ?: return)
-    }
-
     // E0184: Cannot implement both Copy and Drop
     private fun checkImplBothCopyAndDrop(
         holder: RsAnnotationHolder,
@@ -768,6 +761,7 @@ class RsErrorAnnotator : AnnotatorBase(), HighlightRangeExtension {
     }
 
     private fun checkAttr(holder: RsAnnotationHolder, attr: RsAttr) {
+        checkCustomAttributeExists(holder, attr)
         checkDeriveAttribute(holder, attr)
         checkInlineAttr(holder, attr)
         checkReprAttribute(holder, attr)
@@ -776,11 +770,40 @@ class RsErrorAnnotator : AnnotatorBase(), HighlightRangeExtension {
             checkStartAttribute(holder, attr)
     }
 
+    private fun checkCustomAttributeExists(holder: RsAnnotationHolder, attr: RsAttr) {
+        val name = attr.metaItem.name ?: return
+
+        if (name !in STD_ATTRIBUTES && name != "lang") {
+            val fn = attr.findInScope(name, MACROS) as? RsFunction
+
+            if (fn == null || !fn.isAttributeProcMacroDef) {
+                RsDiagnostic.CannotFindAttribute(attr, name).addToHolder(holder)
+            }
+        }
+    }
+
     private fun checkDeriveAttribute(holder: RsAnnotationHolder, attr: RsAttr) {
         if (!attr.isBuiltinWithName("derive")) return
 
         if (attr.owner is RsStructOrEnumItemElement) {
-            checkImplBothCopyAndDrop(holder, attr)
+            // TODO: support `#[derive(std::marker::Copy)]`
+            var deriveCopy: RsMetaItem? = null
+
+            attr.metaItem.metaItemArgs?.metaItemList?.forEach {
+                val name = it.name ?: return
+
+                val fn = it.findInScope(name, MACROS) as? RsFunction
+                if ((fn == null && name !in IMPLIED_DERIVE_MACRO) || (fn != null && !fn.isCustomDeriveProcMacroDef)) {
+                    RsDiagnostic.CannotFindDeriveMacro(it, name).addToHolder(holder)
+                } else if (deriveCopy == null && name == "Copy") {
+                    deriveCopy = it
+                }
+            }
+
+            if (deriveCopy != null) {
+                val selfType = (attr.parent as? RsStructOrEnumItemElement)?.declaredType ?: return
+                checkImplBothCopyAndDrop(holder, selfType, deriveCopy!!, attr.knownItems.Copy ?: return)
+            }
         } else {
             RsDiagnostic.DeriveAttrUnsupportedItem(attr).addToHolder(holder)
         }
@@ -1228,3 +1251,15 @@ private fun RsAttr.isBuiltinWithName(target: String): Boolean {
 
     return !hasInScope(name, MACROS)
 }
+
+private val IMPLIED_DERIVE_MACRO = setOf(
+    "Debug",
+    "PartialEq",
+    "Eq",
+    "PartialOrd",
+    "Ord",
+    "Clone",
+    "Copy",
+    "Hash",
+    "Default"
+)

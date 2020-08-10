@@ -3725,4 +3725,56 @@ class RsErrorAnnotatorTest : RsAnnotatorTestBase(RsErrorAnnotator::class) {
             RED, GREEN
         }
     """)
+
+    @ProjectDescriptor(WithDependencyRustProjectDescriptor::class)
+    fun `test custom derive macro but wrong path`() = checkByFileTree("""
+    //- dep-proc-macro/lib.rs
+        use proc_macro::TokenStream;
+
+        #[proc_macro_derive(Ser)]
+        pub fn ser_derive(input: TokenStream) -> TokenStream {
+            input
+        }
+    //- main.rs
+        extern crate dep_proc_macro;
+
+        use dep_proc_macro::test::Ser;
+
+        #[derive(<error descr="cannot find derive macro `Ser` in this scope">Ser/*caret*/</error>)]
+        struct Foo;
+    """)
+
+    @ProjectDescriptor(WithDependencyRustProjectDescriptor::class)
+    fun `test custom derive macro but not use`() = checkByFileTree("""
+    //- dep-proc-macro/lib.rs
+        use proc_macro::TokenStream;
+
+        #[proc_macro_derive(Ser)]
+        pub fn ser_derive(input: TokenStream) -> TokenStream {
+            input
+        }
+    //- main.rs
+        extern crate dep_proc_macro;
+
+        #[derive(<error descr="cannot find derive macro `Ser` in this scope">Ser/*caret*/</error>)]
+        struct Foo;
+    """)
+
+    @ProjectDescriptor(WithDependencyRustProjectDescriptor::class)
+    fun `test custom attr macro but use in derive`() = checkByFileTree("""
+    //- dep-proc-macro/lib.rs
+        use proc_macro::TokenStream;
+
+        #[proc_macro_attribute]
+        pub fn ser(input: TokenStream) -> TokenStream {
+            input
+        }
+    //- main.rs
+        extern crate dep_proc_macro;
+
+        use dep_proc_macro::ser;
+
+        #[derive(<error descr="cannot find derive macro `ser` in this scope">ser/*caret*/</error>)]
+        struct Foo;
+    """)
 }
